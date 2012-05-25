@@ -20,80 +20,21 @@
 'SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 OPTION EXPLICIT
-'''''''''''''''''''''''''''''''
-' Settings
-'''''''''''''''''''''''''''''''
-' PATH TO MYSQL BIN DIRECTORY
-Dim mysqlDir: mysqlDir = "C:\Program Files\MySQL\MySQL Server 5.5\bin"
-
-' PATH TO 7ZA.EXE
-' 7za.exe is the command-line version of 7-zip; download it from
-' http://www.7-zip.org/download.html
-Dim szExe: szExe = "7za" 
-
-' PATH TO BACKUP DIRECTORY
-' Must have trailing slash
-Dim backupDir: backupDir = "C:\foo\bar\"
-
-' MYSQL USERNAME
-Dim username: username = "root"
-
-' MYSQL PASSWORD
-Dim password: password = "xyzzy"
-
-' MYSQL PORT
-Dim port: port = "3306"
-
-' DATABASES TO IGNORE
-Dim ignoreList: ignoreList = Array("information_schema", "performance_schema", "mysql")
-
-'''''''''''''''''''''''''''''''
-' Advanced Settings
-'''''''''''''''''''''''''''''''
-' ARCHIVE FORMAT
-' e.g. zip, 7z, gzip, tar, etc. See 7-Zip help for more information.
-Dim archiveType: archiveType = "zip"
-
-' ARCHIVE EXTENSION
-' Should match the format selected above.
-Dim archiveExt: archiveExt = "zip"
-
-' ARCHIVE COMPRESSION LEVEL
-' Must be between 0 & 9. 0 = no compression; 9 = Ultra compression.
-Dim compLevel: compLevel = "9"
-
-'''''''''''''''''''''''''''''''
-' The Serious Business
-'''''''''''''''''''''''''''''''
 ' Confirm that the backup directory exists
-Dim objFso:  Set objFso  = CreateObject("Scripting.FileSystemObject")
-If Not objFso.FolderExists(backupDir) Then
-    WScript.Echo "Error: Target backup directory (" + backupDir + ") does not exist. Please create it."
-    WScript.Quit
-End If
-
-Dim dbList, db
-dbList = getDatabaseList
-For Each db In dbList
-    Dim ignoredDb
-    Dim isIgnored: isIgnored = False
-
-    ' Ignore blacklisted DBs
-    For Each ignoredDb In ignoreList
-        If db = ignoredDb Then
-            isIgnored = True
-        End If
-    Next
-
-    If isIgnored = False Then
-        backupDatabase(db)
+Function checkIfDirExists(ByVal givenDir)
+    Dim objFso: Set objFso = CreateObject("Scripting.FileSystemObject")
+    If Not objFso.FolderExists(givenDir) Then
+        checkIfDirExists = False
+    Else
+        checkIfDirExists = True
     End If
-Next
+End Function
 
 ' Fetch a list of DBs on the instance
 Function getDatabaseList
+    WScript.Echo "Generating a list of available databases..."
     Dim dbListCmd
-    dbListCmd = """" + mysqlDir + "\mysql.exe"""
+    dbListCmd = """" + mysqlDir + "mysql.exe"""
     dbListCmd = dbListCmd + " --user=" + username
     dbListCmd = dbListCmd + " --password=" + password
     dbListCmd = dbListCmd + " --port=" + port
@@ -122,13 +63,15 @@ End Function
 
 ' Backup a given database
 Sub backupDatabase(ByVal db)
+    WScript.Echo ("Backing up " + db + "...")
     Dim backupTime: backupTime = getBackupTime
     Dim backupDate: backupDate = getBackupDate
     Dim dbBackupFile: dbBackupFile = db + "-" + backupDate + "-" + backupTime + ".sql"
     Dim dbBackupArchive: dbBackupArchive = dbBackupFile + "." + archiveExt
+    Dim finalBackupDir: finalBackupDir = rootBackupDir + "\" + db + "\"
 
     Dim dbBackupCmd
-    dbBackupCmd = "cmd.exe /C """ + mysqlDir + "\mysqldump.exe"""
+    dbBackupCmd = "cmd.exe /C """ + mysqlDir + "mysqldump.exe"""
     dbBackupCmd = dbBackupCmd + " " + db
     dbBackupCmd = dbBackupCmd + " > " + dbBackupFile
 
@@ -143,19 +86,26 @@ Sub backupDatabase(ByVal db)
     objShell.Run dbBackupCmd, 0, True
     objShell.Run archiveCmd, 0, True
 
-    Dim objFso:  Set objFso  = CreateObject("Scripting.FileSystemObject")
+    Dim objFso: Set objFso = CreateObject("Scripting.FileSystemObject")
     ' Delete uncompressed backup
     If objFso.FileExists(dbBackupFile) Then
         Dim objFile: Set objFile = objFso.GetFile(dbBackupFile)
         objFile.Delete
     End If
 
+    If Not objFso.FolderExists(finalBackupDir) Then
+        objFso.CreateFolder(finalBackupDir)
+    End If
+
     ' Move the compressed backup
-    If Not objFso.FileExists(backupDir + dbBackupArchive) Then
+    If Not objFso.FileExists(finalBackupDir + dbBackupArchive) Then
         If objFso.FileExists(dbBackupArchive) Then
-            objFso.MoveFile dbBackupArchive, backupDir
+            objFso.MoveFile dbBackupArchive, finalBackupDir
         End If
     End If
+
+    'Finally, remove any outdated backups.
+    pruneBackups db, pruneAge
 End Sub
 
 ' Convert the current time into 24 hour HHMM format
@@ -177,3 +127,29 @@ Function getBackupDate
     Dim dateArray: dateArray = Split(Date(), "/")
     getBackupDate = dateArray(2) + "-" + dateArray(1) + "-" + dateArray(0)
 End Function
+
+' Ensure each directory variable has a trailing backslash
+Function correctDirSlashes(ByVal directory)
+    Dim lastChar: lastChar = Mid(directory, Len(directory), 1)
+    If lastChar = "\" Then
+        correctDirSlashes = directory
+    Else
+        correctDirSlashes = directory + "\"
+    End If
+End Function
+
+' Delete backups older than a given age (in days)
+Sub pruneBackups(ByVal db, ByVal maxAgeInDays)
+    WScript.Echo "Pruning " + db + " backups..."
+    Dim objFso: Set objFso = CreateObject("Scripting.FileSystemObject")
+    Dim dbDir: Set dbDir = objFso.GetFolder(rootBackupDir + db)
+
+    Dim dbBackup
+    For Each dbBackup in dbDir.Files
+        Dim backupAge: backupAge = Datediff("d", dbBackup.DateCreated, date())
+        If backupAge > maxAgeInDays Then
+            dbBackup.Delete
+            WScript.Echo dbBackup + " deleted (Age is " + CStr(backupAge) + " days)."
+        End If
+    Next
+End Sub

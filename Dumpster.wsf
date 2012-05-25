@@ -1,0 +1,108 @@
+<!--
+Copyright (c) 2012 David Heinemann
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+-->
+<package>
+    <job id="Dumpster">
+        <script language="VBScript" src="UtilityBelt.vbs" />
+        <script language="VBScript" src="Functions.vbs" />
+        <script>
+OPTION EXPLICIT
+'''''''''''''''''''''''''''''''
+' Settings
+'''''''''''''''''''''''''''''''
+' PATH TO MYSQL BIN DIRECTORY
+Dim mysqlDir: mysqlDir = "C:\Program Files\MySQL\MySQL Server 5.5\bin"
+
+' PATH TO 7ZA.EXE
+' 7za.exe is the command-line version of 7-zip; download it from
+' http://www.7-zip.org/download.html
+Dim szExe: szExe = "7za" 
+
+' PATH TO BACKUP DIRECTORY
+Dim rootBackupDir: rootBackupDir = "C:\foo\bar"
+
+'TODO: Make sure the password is being used in mysql
+
+' MYSQL USERNAME
+Dim username: username = "root"
+
+' MYSQL PASSWORD
+Dim password: password = "xyzzy"
+
+' MYSQL PORT
+Dim port: port = "3306"
+
+' DATABASES TO IGNORE
+Dim ignoreList: ignoreList = Array("information_schema", "performance_schema", "mysql")
+
+' BACKUP CYCLE (IN DAYS)
+' Backups older than this number will be deleted during the backup process
+Dim pruneAge: pruneAge = 14
+
+'''''''''''''''''''''''''''''''
+' Advanced Settings
+'''''''''''''''''''''''''''''''
+' ARCHIVE FORMAT
+' e.g. zip, 7z, gzip, tar, etc. See 7-Zip help for more information.
+Dim archiveType: archiveType = "zip"
+
+' ARCHIVE EXTENSION
+' Should match the format selected above.
+Dim archiveExt: archiveExt = "zip"
+
+' ARCHIVE COMPRESSION LEVEL
+' Must be between 0 & 9. 0 = no compression; 9 = Ultra compression.
+Dim compLevel: compLevel = "9"
+
+'''''''''''''''''''''''''''''''
+' The Serious Business
+'''''''''''''''''''''''''''''''
+Dim ub: Set ub = New UtilityBelt
+ub.forceConsoleMode False
+
+mysqlDir = correctDirSlashes(mysqlDir)
+rootBackupDir = correctDirSlashes(rootBackupDir)
+If Not checkIfDirExists(rootBackupDir) Then
+    WScript.Echo "Error: Target backup directory (" + rootBackupDir + ") does not exist. Please create it."
+    WScript.Quit
+End If
+
+Dim dbList, db
+dbList = getDatabaseList
+For Each db In dbList
+    Dim ignoredDb
+    Dim isIgnored: isIgnored = False
+
+    ' Ignore blacklisted DBs
+    For Each ignoredDb In ignoreList
+        If db = ignoredDb Then
+            isIgnored = True
+        End If
+    Next
+
+    If isIgnored = False Then
+        backupDatabase(db)
+    End If
+Next
+        </script>
+    </job>
+</package>

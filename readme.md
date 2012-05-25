@@ -1,4 +1,4 @@
-**MySQL Dumpster** is a small VBScript to automatically backup all MySQL databases on a Windows server.
+**MySQL Dumpster** is a small VBScript program for automatically backing up MySQL databases in Windows.
 
 It will:
 
@@ -6,13 +6,19 @@ It will:
 * ignore any blacklisted databases
 * backup & compress the remainders
 * move the compressed backups to a specified directory
+* delete any outdated backups
 
 #Usage
+    Dumpster.wsf
+
 MySQL Dumpster takes no command line parameters. All configuration is
-done by editing the script itself.
+done by editing Dumpster.wsf.
 
 #Requirements
 MySQL Dumpster requires the command-line version of 7-Zip (7za.exe), which is used to compress the backups. It can be downloaded from [http://www.7-zip.org/download.html](http://www.7-zip.org/download.html).
+
+#Changelog
+See Changelog.md for details.
 
 #License
 MySQL Dumpster is published under the MIT License.

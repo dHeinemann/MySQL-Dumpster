@@ -1,0 +1,61 @@
+<!--
+Copyright (c) 2012 David Heinemann
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+-->
+<package>
+    <job id="Dumpster Tests">
+        <script language="VBScript" src="UtilityBelt.vbs" />
+        <script language="VBScript" src="Functions.vbs" />
+        <script language="VBScript" src="Tester.vbs" />
+        <script>
+OPTION EXPLICIT
+Dim ub: Set ub = New UtilityBelt
+ub.forceConsoleMode True
+
+WScript.Echo "Running tests..."
+test1()
+test2()
+WScript.Echo "All tests complete."
+
+'''''''''''''''''''''''''''''''
+' correctDirSlashes()
+'''''''''''''''''''''''''''''''
+Sub test1()
+    Dim testDir1: testDir1 = correctDirSlashes("C:\foo")
+    assert Not testDir1 = "", "testDir1: Not null string"
+    assert Mid(testDir1, Len(testDir1), 1) = "\", "testDir1: Trailing backslash added"
+
+    Dim testDir2: testDir2 = correctDirSlashes("C:\foo\")
+    assert Not testDir2 = "", "testDir2: Not null string"
+    assert Mid(testDir2, Len(testDir2), 1) = "\", "testDir2: Has trailing backslash"
+    assert Not Mid(testDir2, Len(testDir2) - 1, 2) = "\\", "testDir2: Does not have two trailing backslashes"
+End Sub
+
+'''''''''''''''''''''''''''''''
+' checkIfDirExists()
+'''''''''''''''''''''''''''''''
+Sub test2()
+    assert Not checkIfDirExists("C:\6vgqdpfggzBMhDVMoW6D\"), "C:\6vgqdpfggzBMhDVMoW6D does not exist"
+    assert checkIfDirExists("C:\Windows\"), "C:\Windows\ exists"
+End Sub
+        </script>
+    </job>
+</package>
